@@ -1,0 +1,159 @@
+apply plugin: 'groovy'
+
+dependencies {
+    compile ('org.codehaus.groovy:groovy-all:2.4.6',)
+
+    testCompile(
+            'junit:junit:4.12',
+            'org.codehaus.groovy:groovy-all:2.4.6',
+            'org.spockframework:spock-core:1.0-groovy-2.4',
+    )
+
+    testRuntime(
+            'com.athaydes:spock-reports:1.2.7'
+    )
+}
+
+import com.wartbar.util.HtmlToolbox
+import com.wartbar.topic.TopicCompilerTask
+import com.wartbar.topic.TopicMap
+import com.wartbar.topic.TopicFileGenerator
+import com.wartbar.topic.TopicMenuGenerator
+import com.wartbar.rss.RSSGeneratorTask
+import com.wartbar.util.ShellExecute
+import com.wartbar.history.HistoryGeneratorTask
+
+subprojects {
+    apply plugin: "groovy"
+    apply plugin: "java"
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+ext {
+  outputALL = "outputALL/"
+  outputMD = "outputMD/"
+  outputCompiledMD = "outputCompiledMD/"
+  outputHTML = "outputHTML/"
+}
+
+
+task generateRSS(type: RSSGeneratorTask, group: "Blog") {
+  description = "generates the RSS feed for this blog based on the <h3> tags"
+
+  List<String> inputList = fileTree(project.outputMD).files.collect { it.name }
+  sourceList = inputList.reverse()
+  destinationFile = new File(project.outputALL + "/rss.xml")
+}
+
+task generateTopics(group: "Blog") {
+
+  doLast {
+
+    TopicMap tm = new TopicMap()
+
+    fileTree(project.outputMD).each {
+      tm.processFile(it)
+    }
+
+    def map = tm.accessMap()
+
+    TopicFileGenerator tfg = new TopicFileGenerator()
+    tfg.create(map)
+
+    TopicMenuGenerator tmg = new TopicMenuGenerator()
+    tmg.create(map)
+  }
+}
+
+task callPandoc(group: "Blog") {
+  doLast {
+    FileTree tree = fileTree(dir: '.', include: project.outputCompiledMD + '/*Compiled.md', exclude: 'excluded/')
+    tree.each {File file ->
+      String fileName = file.getName()
+      String name = fileName[0..fileName.size()-4]
+      String command = "pandoc " + file.getAbsolutePath() + " > " +project.outputHTML + "/" + name.replaceAll("Compiled","") + ".html"
+      ShellExecute.exec(command)
+    }
+  }
+}
+
+task generateHistory(type: HistoryGeneratorTask) {
+  List<String> inputList = fileTree(project.outputMD).files.collect { it.name }
+  sourceList = inputList.reverse()
+  destinationFile = new File(project.outputCompiledMD + "/indexCompiled.md")
+}
+
+// example for line : ### 20161230 Human Readable Object Export
+String getEntryFileName(String line) {
+  String filename = line.replaceAll("#","").trim().replaceAll(" ", "_") + ".insert"
+  return filename
+}
+
+task splitToEntry(group: "Blog", description: "properties : inputFile") {
+  doLast {
+    File inputFile = file(project.inputFile)
+    def lines = inputFile.readLines()
+    File outputFile = null
+    lines.each() {
+      if (it.startsWith("### 20")) {
+        String outputFileName = "blogentry/" + getEntryFileName(it)
+        println outputFileName
+        outputFile = new File(outputFileName)
+      }
+      if (outputFile!=null) {
+        outputFile << it + '\n'
+      }
+    }
+  }
+}
+
+def createPage = {File f, index ->
+  String fileName = f.getName().split("\\.")[0]
+  File newFile = file(project.outputMD + fileName + ".md")
+
+  if (newFile.exists()) {
+    newFile.delete()
+  }
+  println index+1 + " create " + fileName
+
+  List<String> content = HtmlToolbox.standardHeader()
+  content.addAll(f.readLines())
+  if (!fileName.contains("menu")) {
+    content.addAll(HtmlToolbox.menu())
+  }
+  content.addAll(HtmlToolbox.footer())
+
+  HtmlToolbox.writeToFile(newFile, content)
+}
+
+task createPages(group: "Blog"){
+  doLast {
+    HtmlToolbox.rootProject = project
+
+    FileTree blogEntries = fileTree(
+      dir: '.',
+      include: 'blogentry/*.insert',
+      exclude: 'excluded/')
+    blogEntries.eachWithIndex  {File f, index -> createPage(f, index)}
+  }
+}
+
+task compileMDs(type: TopicCompilerTask) {
+}
+
+task compileBlog(group: "Blog") {
+  dependsOn createPages
+  dependsOn generateTopics
+  dependsOn generateHistory
+  dependsOn compileMDs
+  dependsOn generateRSS
+  dependsOn callPandoc
+}
+compileMDs.mustRunAfter(createPages)
+compileMDs.mustRunAfter(generateTopics)
+compileMDs.mustRunAfter(generateHistory)
+generateRSS.mustRunAfter(compileMDs)
+callPandoc.mustRunAfter(compileMDs)
