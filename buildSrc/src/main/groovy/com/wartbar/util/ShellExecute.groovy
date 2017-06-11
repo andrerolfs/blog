@@ -7,7 +7,7 @@ class ShellExecute {
     }
 
     public static int exec(String command, File workingDir) {
-        println command
+        //println command
         def process = new ProcessBuilder(addShellPrefix(command))
                 .directory(workingDir)
                 .redirectErrorStream(true)

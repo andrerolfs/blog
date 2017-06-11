@@ -27,6 +27,7 @@ class TopicMap {
 
     void add(String line, String lastPost) {
         String topic = getTopic(line)
+        println "TopicMap add to " + topic + " : " + lastPost 
         if (map[(topic)] == null) {
             def posts = []
             posts.add(lastPost)
@@ -47,4 +48,3 @@ class TopicMap {
 
     public TopicMap() {}
 }
-

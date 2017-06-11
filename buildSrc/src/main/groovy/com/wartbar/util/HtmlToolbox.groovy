@@ -4,10 +4,10 @@ import org.gradle.api.Project
 
 class HtmlToolbox {
 
-  public static rootProject
+  public static String currentDirString
 
   public static String currentDir() {
-   return rootProject.currentDir
+   return currentDirString
   }
 
   public static List<String> menu() {
@@ -47,7 +47,6 @@ class HtmlToolbox {
 
   public static void writeToFile(File outputFile, def inputList) {
     inputList.each {
-
       outputFile << it << '\n'
     }
   }
@@ -61,7 +60,7 @@ class HtmlToolbox {
         return
       }
 
-      outputList << it + '\n'
+      outputList << it
     }
     return outputList
   }

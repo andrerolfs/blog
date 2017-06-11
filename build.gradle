@@ -39,13 +39,8 @@ ext {
   outputHTML = "outputHTML/"
 }
 
-
 task generateRSS(type: RSSGeneratorTask, group: "Blog") {
   description = "generates the RSS feed for this blog based on the <h3> tags"
-
-  List<String> inputList = fileTree(project.outputMD).files.collect { it.name }
-  sourceList = inputList.reverse()
-  destinationFile = new File(project.outputALL + "/rss.xml")
 }
 
 task generateTopics(group: "Blog") {
@@ -74,17 +69,14 @@ task callPandoc(group: "Blog") {
     tree.each {File file ->
       String fileName = file.getName()
       String name = fileName[0..fileName.size()-4]
-      String command = "pandoc " + file.getAbsolutePath() + " > " +project.outputHTML + "/" + name.replaceAll("Compiled","") + ".html"
+      String command = "pandoc " + file.getAbsolutePath() + " > " + HtmlToolbox.currentDir() + "/" + project.outputHTML + name.replaceAll("Compiled","") + ".html"
+      println "pandoc : " + file.getAbsolutePath()
       ShellExecute.exec(command)
     }
   }
 }
 
-task generateHistory(type: HistoryGeneratorTask) {
-  List<String> inputList = fileTree(project.outputMD).files.collect { it.name }
-  sourceList = inputList.reverse()
-  destinationFile = new File(project.outputCompiledMD + "/indexCompiled.md")
-}
+task generateHistory(type: HistoryGeneratorTask) {}
 
 // example for line : ### 20161230 Human Readable Object Export
 String getEntryFileName(String line) {
@@ -131,8 +123,6 @@ def createPage = {File f, index ->
 
 task createPages(group: "Blog"){
   doLast {
-    HtmlToolbox.rootProject = project
-
     FileTree blogEntries = fileTree(
       dir: '.',
       include: 'blogentry/*.insert',
@@ -144,7 +134,15 @@ task createPages(group: "Blog"){
 task compileMDs(type: TopicCompilerTask) {
 }
 
+task setupCompile() {
+  doLast {
+    HtmlToolbox.currentDirString = project.currentDir
+    println "setupCompile : " + HtmlToolbox.currentDirString
+  }
+}
+
 task compileBlog(group: "Blog") {
+  dependsOn setupCompile
   dependsOn createPages
   dependsOn generateTopics
   dependsOn generateHistory
@@ -152,8 +150,12 @@ task compileBlog(group: "Blog") {
   dependsOn generateRSS
   dependsOn callPandoc
 }
-compileMDs.mustRunAfter(createPages)
-compileMDs.mustRunAfter(generateTopics)
-compileMDs.mustRunAfter(generateHistory)
-generateRSS.mustRunAfter(compileMDs)
-callPandoc.mustRunAfter(compileMDs)
+createPages.mustRunAfter setupCompile
+generateTopics.mustRunAfter setupCompile
+generateHistory.mustRunAfter setupCompile
+compileMDs.mustRunAfter setupCompile
+compileMDs.mustRunAfter createPages
+compileMDs.mustRunAfter generateTopics
+compileMDs.mustRunAfter generateHistory
+generateRSS.mustRunAfter compileMDs
+callPandoc.mustRunAfter compileMDs

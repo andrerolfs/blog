@@ -11,10 +11,8 @@ import java.text.SimpleDateFormat
 
 class RSSGeneratorTask extends DefaultTask{
 
-    @Input
     List<String> sourceList
 
-    @OutputFile
     File destinationFile
 
 
@@ -41,7 +39,7 @@ class RSSGeneratorTask extends DefaultTask{
 
     String getSubjectUrl(String line) {
         String subjectUrl = "http://www.wartbar.de/" + line.replace(".md",".html")
-        return subjectUrl.toLowerCase()
+        return subjectUrl
     }
 
     String getLink(String line) {
@@ -93,15 +91,26 @@ class RSSGeneratorTask extends DefaultTask{
         f << "</rss>\n"
     }
 
+    def initialize() {
+        List<String> inputList = project.fileTree(project.outputMD).files.collect { it.name }
+        sourceList = inputList.toSorted().reverse()
+        destinationFile = new File(project.outputHTML + "rss.xml")
+        destinationFile.delete()
+    }
+
     @TaskAction
     public generate() {
 
-        destinationFile.delete()
+        initialize()
 
         writeBeginRss(destinationFile)
 
         sourceList.eachWithIndex { it, index ->
           if (!it.startsWith("20")) {
+            return
+          }
+
+          if (it.startsWith("2016")) {
             return
           }
 

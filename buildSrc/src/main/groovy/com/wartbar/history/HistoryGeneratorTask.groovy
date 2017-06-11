@@ -5,13 +5,12 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
+import org.gradle.api.file.FileTree
 
 class HistoryGeneratorTask extends DefaultTask {
 
-    @Input
     List<String> sourceList
 
-    @OutputFile
     File destinationFile
 
     String getSubject(String fileName) {
@@ -20,7 +19,7 @@ class HistoryGeneratorTask extends DefaultTask {
     }
 
     String getLink(String fileName) {
-      return '<a href="' + fileName.replace("md", "html") + '">' + getSubject(fileName) + '</a></br>'
+      return '<a href="' + fileName.replace("md", "html") + '">' + getSubject(fileName) + '</a><br/>'
     }
 
     private void generateOutput() {
@@ -32,7 +31,7 @@ class HistoryGeneratorTask extends DefaultTask {
         }
 
         println index+1 + " generate history for " + it
-        historyList.add(getLink(it) + "\n")
+        historyList.add(getLink(it))
       }
 
       List<String> content = HtmlToolbox.standardHeader()
@@ -45,6 +44,16 @@ class HistoryGeneratorTask extends DefaultTask {
     }
 
     private void init() {
+
+      List<String> inputList = project.fileTree(project.outputMD).files.collect { it.name }
+      sourceList = inputList.toSorted().reverse()
+
+      String destinationFilePath = HtmlToolbox.currentDir()
+      destinationFilePath += "/" + project.outputCompiledMD
+      destinationFilePath += "indexCompiled.md"
+      println "generateHistory : " + destinationFilePath
+
+      destinationFile = new File(destinationFilePath)
       destinationFile.delete()
       destinationFile.getParentFile().mkdirs()
     }
