@@ -38,28 +38,6 @@ class TopicMenuGenerator {
             return ""
         }
     }
-/*
-    void writeTopicListHeader(File f, String topic) {
-
-        f << '''<!DOCTYPE html>
-<html style="background-color:black;text-align:center;">
-<head>
-<link rel="stylesheet" type="text/css" href="format.css">
-<link rel="alternate" type="application/rss+xml" title="RSS" href="http://www.wartbar.de/rss.xml">
-</head>
-<br>
-<h1>'''
-
-        f << topic
-
-        f << '''</h1>
-<br>
-<a href="menu.html"><img src="pic/menu.jpg" width="50" ></a>
-<br>
-<br>
-<section id="section">'''
-    }
-*/
 
     void create(def map) {
         File f = new File(HtmlToolbox.currentDir() + "/outputCompiledMD/topicsCompiled.md")
